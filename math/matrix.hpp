@@ -17,7 +17,8 @@ private:
     std::unique_ptr<T[]> data;
 
 public:
-    Matrix() = delete;
+    Matrix() : rows_(0), cols_(0), data(std::make_unique<T[]>(0)) {}
+    
     Matrix(size_t rows, size_t cols) : rows_(rows), cols_(cols), data(std::make_unique<T[]>(rows_ * cols_)) {}
 
     Matrix(const Matrix& other) : rows_(other.rows_), cols_(other.cols_), data(std::make_unique<T[]>(other.size())) {
@@ -191,53 +192,45 @@ public:
         return res;
     }
 
-    // cache optmized more specific '*' overloading 
-    Matrix operator*(const Matrix& other) const {
-        if (cols_ != other.rows_) {
-            throw DimensionMismatch(
-                std::format("cannot multiply {}x{} matrix by {}x{} matrix", rows_, cols_, other.rows_, other.cols_));
-        }
-
-        Matrix res(rows_, other.cols_);
-        std::fill(res.data.get(), res.data.get() + res.size(), T{});
-
-        for (size_t i = 0; i < rows_; ++i) {
-            T* res_row = res.data.get() + i * other.cols_;
-            const T* a_row = data.get() + i * cols_;
-
-            for (size_t k = 0; k < cols_; ++k) {
-                const T* b_row = other.data.get() + k * other.cols_;
-                T a = a_row[k];
-
-                for (size_t j = 0; j < other.cols_; ++j) {
-                    res_row[j] += a * b_row[j];
-                }
-            }
-        }
-
-        return res;
-    }  
-
     template<typename LHS, typename RHS>
     friend Matrix operator*(const MatrixExpr<LHS, T>& lhs, const MatrixExpr<RHS, T>& rhs) {
+        
         const LHS& A = lhs.derived();
         const RHS& B = rhs.derived();
 
         if (A.cols() != B.rows()) {
             throw DimensionMismatch(std::format("cannot multiply {}x{} matrix by {}x{} matrix", A.rows(), A.cols(), B.rows(), B.cols()));
         }
-
+        
         Matrix<T> res(A.rows(), B.cols());
         std::fill(res.data.get(), res.data.get() + res.size(), T{});
 
-        for (size_t i = 0; i < A.rows(); ++i) {
-            for (size_t k = 0; k < A.cols(); ++k) {
-                T a = A(i,k);
-                for (size_t j = 0; j < B.cols(); ++j) {
-                    res(i,j) += a * B(k,j);
+        if constexpr (std::is_same_v<LHS, Matrix<T>> && std::is_same_v<RHS, Matrix<T>>) {
+            // optimized kernel
+            for (size_t i = 0; i < rows_; ++i) {
+                T* res_row = res.data.get() + i * other.cols_;
+                const T* a_row = data.get() + i * cols_;
+
+                for (size_t k = 0; k < cols_; ++k) {
+                    const T* b_row = other.data.get() + k * other.cols_;
+                    T a = a_row[k];
+
+                    for (size_t j = 0; j < other.cols_; ++j) {
+                        res_row[j] += a * b_row[j];
+                    }
+                }
+            }
+        } else {   
+            for (size_t i = 0; i < A.rows(); ++i) {
+                for (size_t k = 0; k < A.cols(); ++k) {
+                    T a = A(i,k);
+                    for (size_t j = 0; j < B.cols(); ++j) {
+                        res(i,j) += a * B(k,j);
+                    }
                 }
             }
         }
+
         return res;
     }
 

@@ -1,6 +1,3 @@
-#include <vector>
-#include <string>
-#include <cstdint>
 #include <fstream> 
 
 #include "loader.hpp"
@@ -49,7 +46,7 @@ void IDXLoader::load_images(const std::string& path, IDXDataset& dataset) {
     dataset.cols  = read_be32(file, path);
 
     dataset.images.resize(dataset.count * dataset.rows * dataset.cols);
-    if(!file.read(reinterpret_cast<char*>(dataset.images.data()), dataset.images.size() * sizeof(uint8_t))) throw FileReadException(path);
+    if(!file.read(reinterpret_cast<char*>(dataset.images.data()), dataset.images.size())) throw FileReadException(path);
 
 }
 
@@ -71,7 +68,7 @@ void IDXLoader::load_labels(const std::string& path, IDXDataset& dataset) {
     uint32_t count = read_be32(file, path);
 
     dataset.labels.resize(count);
-    if(!file.read(reinterpret_cast<char*>(dataset.labels.data()), count * sizeof(uint8_t))) throw FileReadException(path);
+    if(!file.read(reinterpret_cast<char*>(dataset.labels.data()), count)) throw FileReadException(path);
 }
 
 IDXDataset MNISTLoader::load(const std::string& base_path) {

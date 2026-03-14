@@ -42,4 +42,12 @@ namespace network {
                 : LoaderException(std::format("Failed to read file: {}", path)) {}
         };
     }
+
+    namespace activation {
+        class UnsupportedActivationType : public std::runtime_error {
+            public:
+                explicit UnsupportedActivationType(const std::string& type)
+                    : std::runtime_error(std::format("Unsupported activation type: {}", type)) {}
+        };
+    }
 } // namespace network
