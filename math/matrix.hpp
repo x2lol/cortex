@@ -3,11 +3,9 @@
 #include <cstddef>
 #include <functional>
 #include <algorithm>
-#include <format>
 
 #include "matrix_expr.hpp"
 #include "transpose_view.hpp"
-#include "exceptions.hpp"
 
 namespace network::math {
 

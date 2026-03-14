@@ -1,0 +1,45 @@
+#pragma once;
+
+#include <string>
+#include <stdexcept>
+#include <format>
+
+namespace network {
+    namespace math {
+        class LinearAlgebraException : public std::runtime_error {
+        public:
+            explicit LinearAlgebraException(const std::string& msg)
+                : std::runtime_error(msg) {}
+        };
+
+        class DimensionMismatch : public LinearAlgebraException{
+        public:
+            explicit DimensionMismatch(const std::string& msg) : LinearAlgebraException(std::format("Dimension mismatch: {}", msg)) {}
+        };
+
+        class OutOfBounds : public LinearAlgebraException {
+        public:
+            explicit OutOfBounds(const std::string& msg) : LinearAlgebraException (std::format("Out of bounds: ", msg)) {}
+        };
+    } //namspace network::math
+
+    namespace loader {
+        class LoaderException : public std::runtime_error {
+        public:
+            explicit LoaderException(const std::string& msg)
+                : std::runtime_error(msg) {}
+        };
+
+        class FileOpenException : public LoaderException {
+        public:
+            explicit FileOpenException(const std::string& path)
+                : LoaderException(std::format("Failed to open file: {}", path)) {}
+        };
+
+        class FileReadException : public LoaderException {
+        public:
+            explicit FileReadException(const std::string& path)
+                : LoaderException(std::format("Failed to read file: {}", path)) {}
+        };
+    }
+} // namespace network
