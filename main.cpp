@@ -104,8 +104,7 @@ size_t batch_accuracy(const math::Matrix<float>& pred, const math::Matrix<float>
             }
         }
 
-        if (Y(idx,j) == 1)
-            correct++;
+        if (Y(idx,j) == 1) correct++;
     }
 
     return correct;
@@ -128,34 +127,75 @@ int main() {
         net.layers.emplace_back(64, OUTPUT_SIZE, activation::Type::Softmax);
 
 
-        const float learning_rate = 0.001f;
-        // const size_t sgd_epochs = 1;
+        float learning_rate = 0.001f;
+        const size_t sgd_epochs = 3;
         const size_t batch_epochs = 5;
         const size_t batch_size = 64;
         
-        /* SGD training for sanity check
-        std::cout << "\n=== SGD training ===\n"; 
+
+        std::cout << "\n=== PHASE 1: SGD training ===\n"; 
 
         for (size_t e = 0; e < sgd_epochs; ++e) {
-            float total_loss = 0;
+
+            float epoch_loss = 0;
+            size_t epoch_correct = 0;
+
+            float window_loss = 0;
+            size_t window_correct = 0;
+            size_t window_count = 0;
+
+            auto epoch_start = std::chrono::high_resolution_clock::now();
+
             for (size_t i = 0; i < dataset.count; ++i) {
-                if (i % 5000 == 0) std::cout << std::format("Processed {} samples\n", i); 
-                auto x = image_to_matrix(dataset.images, i); 
-                auto y = label_to_onehot(dataset.labels[i]); 
-                
-                auto y_pred = net.forward(x); 
-                float loss = cross_entropy(y_pred, y); total_loss += loss; 
-                
-                auto grad = cross_entropy_grad(y_pred, y); net.backward(grad, learning_rate); 
-                
-            } 
-            
-            std::cout << std::format( "SGD Epoch {} | average loss = {}\n", e, total_loss / dataset.count ); 
+
+                auto x = image_to_matrix(dataset.images, i);
+                auto y = label_to_onehot(dataset.labels[i]);
+
+                auto pred = net.forward(x);
+
+                float loss = cross_entropy(pred, y);
+
+                auto grad = cross_entropy_grad(pred, y);
+                net.backward(grad, learning_rate);
+
+                int predicted = predict_label(pred);
+
+                bool correct = (predicted == dataset.labels[i]);
+
+                epoch_loss += loss;
+                epoch_correct += correct;
+
+                window_loss += loss;
+                window_correct += correct;
+                window_count++;
+
+                if ((i + 1) % 5000 == 0) {
+
+                    float avg_loss = window_loss / window_count;
+                    float acc = 100.0f * window_correct / window_count;
+
+                    std::cout << std::format(
+                        "Epoch {} | sample {} | loss {:.4f} | acc {:.2f}%\n",
+                        e, i + 1, avg_loss, acc
+                    );
+
+                    window_loss = 0;
+                    window_correct = 0;
+                    window_count = 0;
+                }
+            }
+
+            auto epoch_end = std::chrono::high_resolution_clock::now();
+            auto sec = std::chrono::duration_cast<std::chrono::seconds>(epoch_end - epoch_start).count();
+
+            std::cout << std::format("Epoch {} finished | avg loss {:.4f} | acc {:.2f}% | time {}s\n", e, epoch_loss / dataset.count, 100.0f * epoch_correct / dataset.count, sec);
         }
-        */
+
+        // switching learning rate for mini-batch 
+        learning_rate = 0.005f;
 
 
-        std::cout << "\n=== Mini-batch training ===\n";
+        std::cout << "\n=== PHASE 2: Mini-batch training ===\n";
 
         std::filesystem::create_directories("../serialization/saved");
 

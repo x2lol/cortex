@@ -4,13 +4,12 @@
 #include <functional>
 #include <algorithm>
 
-#include "matrix_expr.hpp"
-#include "transpose_view.hpp"
+#include "../exceptions/exceptions.hpp"
 
 namespace network::math {
 
 template<typename T>
-class Matrix : public MatrixExpr<Matrix<T>, T> {
+class Matrix {
 private:
     size_t rows_;
     size_t cols_;
@@ -99,29 +98,21 @@ public:
     size_t cols() const { return cols_; }
     size_t size() const { return rows_ * cols_; }
 
-    template<typename Expr>
-    Matrix(const MatrixExpr<Expr, T>& expr) {
-        const Expr& e = expr.derived();
-        rows_ = e.rows();
-        cols_ = e.cols();
-        data = std::make_unique<T[]>(rows_ * cols_);
+    Matrix transpose() const {
+        Matrix res(cols_, rows_);
+
+        T* dst = res.data.get();
+        const T* src = data.get();
 
         for (size_t i = 0; i < rows_; ++i) {
+            const T* src_row = src + i * cols_;
+
             for (size_t j = 0; j < cols_; ++j) {
-                (*this)(i,j) = e(i,j);
+                dst[j * rows_ + i] = src_row[j];
             }
         }
-    }
 
-    template<typename Expr>
-    Matrix& operator=(const MatrixExpr<Expr,T>& expr) {
-        Matrix tmp(expr);
-        *this = std::move(tmp);
-        return *this;
-    }
-
-    auto transpose() const {
-        return TransposeView<Matrix<T>, T>(*this);
+        return res;
     }
 
     Matrix operator*(const T& scalar) const {
@@ -152,81 +143,56 @@ public:
         return m * scalar;
     }
 
-    template<typename LHS, typename RHS>
-    friend Matrix operator+(const MatrixExpr<LHS, T>& lhs, const MatrixExpr<RHS, T>& rhs) {
-        const LHS& A = lhs.derived();
-        const RHS& B = rhs.derived();
-
-        if (A.rows() != B.rows() || A.cols() != B.cols()) {
-            throw DimensionMismatch(std::format("cannot add {}x{} matrix to {}x{} matrix", B.rows(), B.cols(), A.rows(), A.cols()));
+    Matrix operator+(const Matrix& other) const {
+        
+        if (rows_ != other.rows() || cols_ != other.cols()) {
+            throw DimensionMismatch(std::format("cannot add {}x{} matrix to {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
 
-        Matrix<T> res(A.rows(), A.cols());
+        Matrix<T> res(rows_, cols_);
         
-        for (size_t i = 0; i < A.rows(); ++i) {
-            for (size_t j = 0; j < A.cols(); ++j) {
-                res(i,j) = A(i,j) + B(i,j);
-            }
+
+        for (size_t i = 0; i < this->size(); ++i) {
+            res.data[i] = data[i] + other.data[i];
         }
 
         return res;
     }
 
-    template<typename LHS, typename RHS>
-    friend Matrix operator-(const MatrixExpr<LHS, T>& lhs, const MatrixExpr<RHS, T>& rhs) {
-        const LHS& A = lhs.derived();
-        const RHS& B = rhs.derived();
+    Matrix operator-(const Matrix& other) const {
 
-        if (A.rows() != B.rows() || A.cols() != B.cols()) {
-            throw DimensionMismatch(std::format("cannot substract {}x{} matrix from {}x{} matrix", B.rows(), B.cols(), A.rows(), A.cols()));
+        if (rows_ != other.rows() || cols_ != other.cols()) {
+            throw DimensionMismatch(std::format("cannot substract {}x{} matrix from {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
 
-        Matrix<T> res(A.rows(), A.cols());
+        Matrix<T> res(rows_, cols_);
 
-        for (size_t i = 0; i < A.rows(); ++i) {
-            for (size_t j = 0; j < A.cols(); ++j) {
-                res(i,j) = A(i,j) - B(i,j);
-            }
+        for (size_t i = 0; i < this->size(); ++i) {
+            res.data[i] = data[i] - other.data[i];
         }
 
         return res;
     }
 
-    template<typename LHS, typename RHS>
-    friend Matrix operator*(const MatrixExpr<LHS, T>& lhs, const MatrixExpr<RHS, T>& rhs) {
-        
-        const LHS& A = lhs.derived();
-        const RHS& B = rhs.derived();
+    Matrix operator*(const Matrix<T>& other) const {
 
-        if (A.cols() != B.rows()) {
-            throw DimensionMismatch(std::format("cannot multiply {}x{} matrix by {}x{} matrix", A.rows(), A.cols(), B.rows(), B.cols()));
+        if (cols_ != other.rows()) {
+            throw DimensionMismatch(std::format("cannot multiply {}x{} matrix by {}x{} matrix", rows_, cols_, other.rows(), other.cols()));
         }
         
-        Matrix<T> res(A.rows(), B.cols());
+        Matrix<T> res(rows_, other.cols());
         std::fill(res.data.get(), res.data.get() + res.size(), T{});
 
-        if constexpr (std::is_same_v<LHS, Matrix<T>> && std::is_same_v<RHS, Matrix<T>>) {
-            // optimized kernel
-            for (size_t i = 0; i < A.rows(); ++i) {
-                T* res_row = res.data.get() + i * B.cols();
-                const T* a_row = A.data.get() + i * A.cols();
+        for (size_t i = 0; i < rows_; ++i) {
+            T* res_row = res.data.get() + i * other.cols();
+            const T* a_row = data.get() + i * cols_;
 
-                for (size_t k = 0; k < A.cols(); ++k) {
-                    const T* b_row = B.data.get() + k * B.cols();
-                    T a = a_row[k];
+            for (size_t k = 0; k < cols_; ++k) {
+                const T* b_row = other.data.get() + k * other.cols();
+                T a = a_row[k];
 
-                    for (size_t j = 0; j < B.cols(); ++j) {
-                        res_row[j] += a * b_row[j];
-                    }
-                }
-            }
-        } else {   
-            for (size_t i = 0; i < A.rows(); ++i) {
-                for (size_t k = 0; k < A.cols(); ++k) {
-                    T a = A(i,k);
-                    for (size_t j = 0; j < B.cols(); ++j) {
-                        res(i,j) += a * B(k,j);
-                    }
+                for (size_t j = 0; j < other.cols(); ++j) {
+                    res_row[j] += a * b_row[j];
                 }
             }
         }
@@ -234,95 +200,94 @@ public:
         return res;
     }
 
-
-    template<typename RHS>
-    Matrix& operator+=(const MatrixExpr<RHS, T>& rhs) {
-        const RHS& B = rhs.derived();
-        
-        if (rows_ != B.rows() || cols_ != B.cols()) {
-            throw DimensionMismatch(std::format("cannot add {}x{} matrix to {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
+    Matrix& operator+=(const Matrix<T>& other) {
+        if (rows_ != other.rows() || cols_ != other.cols()) {
+            throw DimensionMismatch(std::format("cannot add {}x{} matrix to {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
 
-        for (size_t i = 0; i < rows_; ++i) {
-            for (size_t j = 0; j < cols_; ++j) {
-                (*this)(i,j) += B(i,j);
-            }
+        for (size_t i = 0; i < this->size(); ++i) {
+            data[i] += other.data[i];
         }
 
         return *this;
     }
 
-    template<typename RHS>
-    Matrix& operator-=(const MatrixExpr<RHS, T>& rhs) {
-        const RHS& B = rhs.derived();
-        
-        if (rows_ != B.rows() || cols_ != B.cols()) {
-            throw DimensionMismatch(std::format("cannot substract {}x{} matrix from {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
+    Matrix& operator-=(const Matrix<T>& other) {
+        if (rows_ != other.rows() || cols_ != other.cols()) {
+            throw DimensionMismatch(std::format("cannot substract {}x{} matrix from {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
-
-        for (size_t i = 0; i < rows_; ++i) {
-            for (size_t j = 0; j < cols_; ++j) {
-                (*this)(i,j) -= B(i,j);
-            }
+        
+        for (size_t i = 0; i < this->size(); ++i) {
+            data[i] -= other.data[i];
         }
 
         return *this;
     }
 
-    template<typename RHS>
-    Matrix hadamard(const MatrixExpr<RHS, T>& rhs) const {
-        const RHS& B = rhs.derived();
-
-        if (rows_ != B.rows() || cols_ != B.cols()) {
-            throw DimensionMismatch(std::format("cannot elementwise multiply {}x{} matrix by {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
+    Matrix hadamard(const Matrix<T>& other) const {
+        if (rows_ != other.rows() || cols_ != other.cols()) {
+            throw DimensionMismatch(std::format("cannot elementwise multiply {}x{} matrix by {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
         Matrix<T> res(rows_, cols_);
 
-        for (size_t i = 0; i < rows_; ++i) {
-            for (size_t j = 0; j < cols_; ++j) {
-                res(i,j) = (*this)(i,j) * B(i,j);
-            }
+        for (size_t i = 0; i < this->size(); ++i) {
+            res.data[i] = data[i] * other.data[i];
         }
+
         return res;
     }
 
-    template<typename RHS>
-    Matrix add_colwise(const MatrixExpr<RHS, T>& rhs) const {
-        const RHS& B = rhs.derived();
 
-        if (B.cols() != 1 || B.rows() != rows_) {
-            throw DimensionMismatch(std::format("cannot columnwise broadcast {}x{} matrix to {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
+    Matrix add_colwise(const Matrix& other) const {
+
+        if (other.cols() != 1 || other.rows() != rows_) {
+            throw DimensionMismatch(std::format("cannot columnwise broadcast {}x{} matrix to {}x{} matrix", other.rows(), other.cols(), rows_, cols_));
         }
 
         Matrix res(*this);
 
-        if constexpr (std::is_same_v<RHS, Matrix<T>>) {
-            // optimized kernel
-            for (size_t i = 0; i < rows_; ++i) {
-                T bias = B(i,0);
-                const T* a_row = data.get() + i * cols_;
-                T* r_row = res.data.get() + i * cols_;
 
-                for (size_t j = 0; j < cols_; ++j) {
-                    r_row[j] = a_row[j] + bias;
-                }
-            }
-        } else {   
-            for (size_t i = 0; i < cols_; ++i) {
-                for (size_t j = 0; j < rows_; ++j) {
-                    res(j,i) += B(j,0);
-                }
+        for (size_t i = 0; i < rows_; ++i) {
+            T bias = other.data[i];
+            const T* a_row = data.get() + i * cols_;
+            T* r_row = res.data.get() + i * cols_;
+
+            for (size_t j = 0; j < cols_; ++j) {
+                r_row[j] = a_row[j] + bias;
             }
         }
+
+        return res;
+    }
+
+    
+    bool is_vector() const {
+        return (cols_ == 1 || rows_ == 1);
+    }
+
+    T dot(const Matrix<T>& other) const {
+
+        if (!this->is_vector() || !other.is_vector() || this->size() != other.size()) {
+            throw DimensionMismatch( std::format("dot product is not defined for {}x{} and {}x{}", rows_, cols_, other.rows(), other.cols()));
+        }
+
+        const T* a = data.get();
+        const T* b = other.data.get();
+
+        size_t n = size();
+
+        T res = T{};
+
+        for (size_t i = 0; i < n; ++i)
+            res += a[i] * b[i];
 
         return res;
     }
 
 };
 
-
-template<typename Expr, typename Func, typename T>
-Matrix<T> apply(const MatrixExpr<Expr,T>& e, Func f) {
+template<typename T, typename Func>
+Matrix<T> apply(const Matrix<T>& e, Func f) {
     Matrix<T> res(e.rows(), e.cols());
 
     for (size_t i = 0; i < e.rows(); ++i) {
