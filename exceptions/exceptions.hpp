@@ -1,4 +1,4 @@
-#pragma once;
+#pragma once
 
 #include <string>
 #include <stdexcept>
@@ -14,12 +14,14 @@ namespace network {
 
         class DimensionMismatch : public LinearAlgebraException{
         public:
-            explicit DimensionMismatch(const std::string& msg) : LinearAlgebraException(std::format("Dimension mismatch: {}", msg)) {}
+            explicit DimensionMismatch(const std::string& msg) 
+                : LinearAlgebraException(std::format("Dimension mismatch: {}", msg)) {}
         };
 
         class OutOfBounds : public LinearAlgebraException {
         public:
-            explicit OutOfBounds(const std::string& msg) : LinearAlgebraException (std::format("Out of bounds: ", msg)) {}
+            explicit OutOfBounds(const std::string& msg) 
+                : LinearAlgebraException (std::format("Out of bounds: ", msg)) {}
         };
     } //namspace network::math
 
@@ -41,7 +43,7 @@ namespace network {
             explicit FileReadException(const std::string& path)
                 : LoaderException(std::format("Failed to read file: {}", path)) {}
         };
-    }
+    } //namspace network::loader
 
     namespace activation {
         class UnsupportedActivationType : public std::runtime_error {
@@ -49,5 +51,5 @@ namespace network {
                 explicit UnsupportedActivationType(const std::string& type)
                     : std::runtime_error(std::format("Unsupported activation type: {}", type)) {}
         };
-    }
+    } //namspace network::activation
 } // namespace network

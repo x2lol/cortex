@@ -12,31 +12,33 @@ DenseLayer::DenseLayer(size_t in_size, size_t out_size, activation::Type a) : W(
     for(size_t i = 0; i < b.size(); ++i) b[i] = 0;
 }
 
-    math::Matrix<float> DenseLayer::forward(const math::Matrix<float>& x) {
+math::Matrix<float> DenseLayer::forward(const math::Matrix<float>& x) {
     input = x; // cache for backprop
-    math::Matrix<float> z = W * x + b; // matrix + matrix broadcast
-    output = activation::apply_activation(z, act);
+    Z = (W * x).add_colwise(b); // matrix + matrix broadcast
+    output = activation::apply_activation(Z, act);
     return output;
 }
 
-    math::Matrix<float> DenseLayer::backward(const math::Matrix<float>& dA, float lr) {
+math::Matrix<float> DenseLayer::backward(const math::Matrix<float>& dA, float learning_rate) {
     // derivative of activation
-    math::Matrix<float> dZ = activation::apply_activation_deriv(output, act).hadamard(dA);
+    math::Matrix<float> dZ = (act == activation::Type::Softmax) ? dA : activation::apply_activation_deriv(Z, act).hadamard(dA);
 
-    math::Matrix<float> dW = dZ * input.transpose();
+    math::Matrix<float> dW = (dZ * input.transpose()) * 1.0f;
     // db = sum along columns
     math::Matrix<float> db(dZ.rows(),1);
     for(size_t i = 0; i < dZ.rows(); ++i){
         float sum = 0;
         for(size_t j = 0; j < dZ.cols(); ++j) sum += dZ(i,j);
         
-        db(i,0)=sum;
+        db(i,0) = sum;
     }
-    // update
-    W = W - dW * lr;
-    b = b - db * lr;
-    // return dA for previous layer
-    return W.transpose() * dZ;
+    
+    math::Matrix<float> dA_prev = W.transpose() * dZ;
+
+    W = W - dW * learning_rate;
+    b = b - db * learning_rate;
+
+    return dA_prev;
 }
 
-}
+} // namespace network

@@ -18,7 +18,7 @@ private:
 
 public:
     Matrix() : rows_(0), cols_(0), data(std::make_unique<T[]>(0)) {}
-    
+
     Matrix(size_t rows, size_t cols) : rows_(rows), cols_(cols), data(std::make_unique<T[]>(rows_ * cols_)) {}
 
     Matrix(const Matrix& other) : rows_(other.rows_), cols_(other.cols_), data(std::make_unique<T[]>(other.size())) {
@@ -207,15 +207,15 @@ public:
 
         if constexpr (std::is_same_v<LHS, Matrix<T>> && std::is_same_v<RHS, Matrix<T>>) {
             // optimized kernel
-            for (size_t i = 0; i < rows_; ++i) {
-                T* res_row = res.data.get() + i * other.cols_;
-                const T* a_row = data.get() + i * cols_;
+            for (size_t i = 0; i < A.rows(); ++i) {
+                T* res_row = res.data.get() + i * B.cols();
+                const T* a_row = A.data.get() + i * A.cols();
 
-                for (size_t k = 0; k < cols_; ++k) {
-                    const T* b_row = other.data.get() + k * other.cols_;
+                for (size_t k = 0; k < A.cols(); ++k) {
+                    const T* b_row = B.data.get() + k * B.cols();
                     T a = a_row[k];
 
-                    for (size_t j = 0; j < other.cols_; ++j) {
+                    for (size_t j = 0; j < B.cols(); ++j) {
                         res_row[j] += a * b_row[j];
                     }
                 }
@@ -273,7 +273,7 @@ public:
     Matrix hadamard(const MatrixExpr<RHS, T>& rhs) const {
         const RHS& B = rhs.derived();
 
-        if (rows_ != B.rows() || cols_ != B.cols()){
+        if (rows_ != B.rows() || cols_ != B.cols()) {
             throw DimensionMismatch(std::format("cannot elementwise multiply {}x{} matrix by {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
         }
         Matrix<T> res(rows_, cols_);
@@ -285,7 +285,41 @@ public:
         }
         return res;
     }
+
+    template<typename RHS>
+    Matrix add_colwise(const MatrixExpr<RHS, T>& rhs) const {
+        const RHS& B = rhs.derived();
+
+        if (B.cols() != 1 || B.rows() != rows_) {
+            throw DimensionMismatch(std::format("cannot columnwise broadcast {}x{} matrix to {}x{} matrix", B.rows(), B.cols(), rows_, cols_));
+        }
+
+        Matrix res(*this);
+
+        if constexpr (std::is_same_v<RHS, Matrix<T>>) {
+            // optimized kernel
+            for (size_t i = 0; i < rows_; ++i) {
+                T bias = B(i,0);
+                const T* a_row = data.get() + i * cols_;
+                T* r_row = res.data.get() + i * cols_;
+
+                for (size_t j = 0; j < cols_; ++j) {
+                    r_row[j] = a_row[j] + bias;
+                }
+            }
+        } else {   
+            for (size_t i = 0; i < cols_; ++i) {
+                for (size_t j = 0; j < rows_; ++j) {
+                    res(j,i) += B(j,0);
+                }
+            }
+        }
+
+        return res;
+    }
+
 };
+
 
 template<typename Expr, typename Func, typename T>
 Matrix<T> apply(const MatrixExpr<Expr,T>& e, Func f) {
@@ -308,6 +342,7 @@ Matrix<T> apply(const MatrixExpr<Expr,T>& e, Func f) {
 1. Define apply() as a member function
 2. Have a proper wrapper for Vector 
 3. Extend operator overloading for all possible scenarios e.g a*=b
+4. Expose data()
 
 3/13/2026
 

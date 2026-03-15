@@ -7,6 +7,8 @@ namespace network {
         std::vector<DenseLayer> layers;
 
         network::math::Matrix<float> forward(const network::math::Matrix<float>& x);
-        void backward(const network::math::Matrix<float>& grad_output, float lr);
+        void backward(const network::math::Matrix<float>& grad_output, float learning_rate);
+        void serialize(std::vector<float>& weights, std::vector<float>& biases);
+        
     };
 } // nemaspace network
