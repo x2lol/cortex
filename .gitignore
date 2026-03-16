@@ -3,3 +3,10 @@ build/
 
 # VSCode configurations
 .vscode/
+
+# Datasets
+src/cortex/datasets/mnist/
+src/cortex/datasets/emnist/
+
+# Saved checkpoints
+src/cortex/serialization/saved/
