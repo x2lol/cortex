@@ -13,7 +13,7 @@ int main() {
 
         std::cout << "Loading EMNIST Balanced dataset...\n";
 
-        loader::IDXDataset dataset = loader::EMNISTLoader::load("/datasets/emnist", "balanced");
+        loader::IDXDataset dataset = loader::EMNISTLoader::load("../src/cortex/datasets/emnist", "balanced");
 
         std::cout << std::format("Loaded {} samples\n", dataset.count);
 
@@ -30,7 +30,7 @@ int main() {
         trainer.train_sgd(2, 0.001f);
 
         std::cout << "\n=== Mini-batch training ===\n";
-        trainer.train_minibatch(12, 128, 0.003f, "serialization/saved/");
+        trainer.train_minibatch(12, 128, 0.003f, "../src/cortex/serialization/saved/");
 
         float accuracy = trainer.evaluate();
 
