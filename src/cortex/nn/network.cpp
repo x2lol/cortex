@@ -1,4 +1,5 @@
 #include <cortex/nn/network.hpp>
+#include <cstring>
 
 namespace cortex {
     math::Matrix<float> Network::forward(const math::Matrix<float>& input){
@@ -58,9 +59,5 @@ namespace cortex {
             wi += w_size;
             bi += b_size;
         }
-    }
-
-    static Network Network::load(const std::string& path) {
-        return serialization::ModelIO::load(path);
     }
 } // namspace cortex

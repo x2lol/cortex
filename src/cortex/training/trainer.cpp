@@ -1,5 +1,6 @@
-#include "trainer.hpp"
-#include "loss.hpp"
+#include <cortex/training/trainer.hpp>
+#include <cortex/training/loss.hpp>
+#include <cortex/serialization/model_io.hpp>
 
 #include <iostream>
 #include <format>
@@ -7,6 +8,7 @@
 #include <numeric>
 #include <random>
 #include <chrono>
+#include <filesystem>
 
 namespace cortex::training {
 
@@ -159,7 +161,7 @@ void Trainer::train_sgd(size_t epochs, float learning_rate) {
 void Trainer::train_minibatch(size_t epochs, size_t batch_size, float learning_rate, const std::string& checkpoint_dir) {
 
     const size_t image_size = dataset.rows * dataset.cols;
-    const size_t classes = net.layers.back().size();
+    const size_t classes = net.layers.back().output.size();
 
     std::filesystem::create_directories(checkpoint_dir);
 

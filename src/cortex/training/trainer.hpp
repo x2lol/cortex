@@ -1,8 +1,8 @@
 #pragma once
 
-#include "<cortex/nn/network.hpp>"
-#include "<cortex/datasets/loader.hpp>"
-#include "<cortex/math/matrix.hpp>"
+#include <cortex/nn/network.hpp>
+#include <cortex/datasets/loader.hpp>
+#include <cortex/math/matrix.hpp>
 
 #include <vector>
 #include <cstddef>
@@ -24,7 +24,7 @@ public:
 
     void train_sgd(size_t epochs, float learning_rate);
 
-    void Trainer::train_minibatch(size_t epochs, size_t batch_size, float learning_rate, const std::string& checkpoint_dir);
+    void train_minibatch(size_t epochs, size_t batch_size, float learning_rate, const std::string& checkpoint_dir);
 
     float evaluate();
 

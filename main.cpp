@@ -5,7 +5,7 @@
 #include <cortex/nn/network.hpp>
 #include <cortex/training/trainer.hpp>
 
-using namespace namespace;
+using namespace cortex;
 
 int main() {
 

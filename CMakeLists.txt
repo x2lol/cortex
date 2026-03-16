@@ -25,3 +25,5 @@ set(SOURCES
 )
 
 add_executable(network ${SOURCES})
+
+target_include_directories(network PUBLIC src)

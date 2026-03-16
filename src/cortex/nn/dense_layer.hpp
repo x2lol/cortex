@@ -16,7 +16,7 @@ namespace cortex {
         math::Matrix<float> input;
         math::Matrix<float> output;
 
-        DenseLayer(size_t in_size, size_t out_size, activation::Type a, InitType init = Zero);
+        DenseLayer(size_t in_size, size_t out_size, activation::Type a, InitType init = InitType::Zero);
         
         math::Matrix<float> forward(const math::Matrix<float>& x);
         math::Matrix<float> backward(const math::Matrix<float>& grad_output, float learning_rate);
