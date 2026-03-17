@@ -21,6 +21,8 @@ inline std::string to_string(const Type& type) {
         return "Softmax";
         break;
     }
+
+    return "Unsupported";
 }
 
 template<typename T>

@@ -20,7 +20,7 @@ struct TrainConfig {
 class Trainer {
 public:
 
-    Trainer(cortex::Network& net, const loader::IDXDataset& dataset);
+    Trainer(cortex::Network& net, const loader::IDXDataset& train_dataset, const loader::IDXDataset& test_dataset);
 
     void train_sgd(size_t epochs, float learning_rate);
 
@@ -31,7 +31,8 @@ public:
 private:
 
     cortex::Network& net;
-    const loader::IDXDataset& dataset;
+    const loader::IDXDataset& train_dataset;
+    const loader::IDXDataset& test_dataset;
 
     static math::Matrix<float> image_to_matrix(const std::vector<uint8_t>& images, size_t index, size_t image_size);
 

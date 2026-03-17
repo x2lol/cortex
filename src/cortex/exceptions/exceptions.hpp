@@ -21,7 +21,7 @@ namespace cortex {
         class OutOfBounds : public LinearAlgebraException {
         public:
             explicit OutOfBounds(const std::string& msg) 
-                : LinearAlgebraException (std::format("Out of bounds: ", msg)) {}
+                : LinearAlgebraException (std::format("Out of bounds: {}", msg)) {}
         };
     } //namspace cortex::math
 

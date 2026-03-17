@@ -12,7 +12,7 @@
 
 namespace cortex::training {
 
-Trainer::Trainer(cortex::Network& net, const loader::IDXDataset& dataset) : net(net), dataset(dataset) {}
+Trainer::Trainer(cortex::Network& net, const loader::IDXDataset& train_dataset, const loader::IDXDataset& test_dataset) : net(net), train_dataset(train_dataset), test_dataset(test_dataset) {}
 
 math::Matrix<float> Trainer::image_to_matrix(const std::vector<uint8_t>& images, size_t index, size_t image_size) {
     math::Matrix<float> x(image_size, 1);
@@ -111,8 +111,8 @@ size_t Trainer::batch_accuracy(const math::Matrix<float>& pred, const math::Matr
 
 void Trainer::train_sgd(size_t epochs, float learning_rate) {
 
-    const size_t image_size = dataset.rows * dataset.cols;
-    const size_t classes = 47;
+    const size_t image_size = train_dataset.rows * train_dataset.cols;
+    const size_t classes = net.layers.back().W.rows();
 
     for(size_t e = 0; e < epochs; ++e) {
 
@@ -121,10 +121,10 @@ void Trainer::train_sgd(size_t epochs, float learning_rate) {
 
         std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
-        for(size_t i = 0; i < dataset.count; ++i) {
+        for(size_t i = 0; i < train_dataset.count; ++i) {
 
-            math::Matrix<float> x = image_to_matrix(dataset.images, i, image_size);
-            math::Matrix<float> y = label_to_onehot(dataset.labels[i], classes);
+            math::Matrix<float> x = image_to_matrix(train_dataset.images, i, image_size);
+            math::Matrix<float> y = label_to_onehot(train_dataset.labels[i], classes);
 
             math::Matrix<float> pred = net.forward(x);
 
@@ -135,7 +135,7 @@ void Trainer::train_sgd(size_t epochs, float learning_rate) {
 
             int predicted = predict_label(pred);
 
-            if(predicted == dataset.labels[i]) {
+            if(predicted == train_dataset.labels[i]) {
                 epoch_correct++;
             }
 
@@ -152,20 +152,20 @@ void Trainer::train_sgd(size_t epochs, float learning_rate) {
 
         std::cout << std::format("Epoch {} finished | avg loss {:.4f} | acc {:.2f}% | time {}s\n",
                                  e,
-                                 epoch_loss / dataset.count,
-                                 100.0f * epoch_correct / dataset.count,
+                                 epoch_loss / train_dataset.count,
+                                 100.0f * epoch_correct / train_dataset.count,
                                  seconds);
     }
 }
 
 void Trainer::train_minibatch(size_t epochs, size_t batch_size, float learning_rate, const std::string& checkpoint_dir) {
 
-    const size_t image_size = dataset.rows * dataset.cols;
-    const size_t classes = net.layers.back().output.size();
+    const size_t image_size = train_dataset.rows * train_dataset.cols;
+    const size_t classes = net.layers.back().W.rows();
 
     std::filesystem::create_directories(checkpoint_dir);
 
-    std::vector<size_t> indices(dataset.count);
+    std::vector<size_t> indices(train_dataset.count);
     std::iota(indices.begin(), indices.end(), 0);
 
     std::mt19937 rng(std::random_device{}());
@@ -179,12 +179,12 @@ void Trainer::train_minibatch(size_t epochs, size_t batch_size, float learning_r
 
         std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
-        for(size_t start_idx = 0; start_idx < dataset.count; start_idx += batch_size) {
+        for(size_t start_idx = 0; start_idx < train_dataset.count; start_idx += batch_size) {
 
-            size_t current_batch = std::min(batch_size, dataset.count - start_idx);
+            size_t current_batch = std::min(batch_size, train_dataset.count - start_idx);
 
-            math::Matrix<float> X = build_batch_images(dataset.images, indices, start_idx, current_batch, image_size);
-            math::Matrix<float> Y = build_batch_labels(dataset.labels, indices, start_idx, current_batch, classes);
+            math::Matrix<float> X = build_batch_images(train_dataset.images, indices, start_idx, current_batch, image_size);
+            math::Matrix<float> Y = build_batch_labels(train_dataset.labels, indices, start_idx, current_batch, classes);
 
             math::Matrix<float> pred = net.forward(X);
 
@@ -231,23 +231,23 @@ void Trainer::train_minibatch(size_t epochs, size_t batch_size, float learning_r
 
 float Trainer::evaluate() {
 
-    const size_t image_size = dataset.rows * dataset.cols;
+    const size_t image_size = test_dataset.rows * test_dataset.cols;
     size_t correct = 0;
 
-    for(size_t i = 0; i < dataset.count; ++i) {
+    for(size_t i = 0; i < test_dataset.count; ++i) {
 
-        math::Matrix<float> x = image_to_matrix(dataset.images, i, image_size);
+        math::Matrix<float> x = image_to_matrix(test_dataset.images, i, image_size);
 
         math::Matrix<float> pred = net.forward(x);
 
         int predicted = predict_label(pred);
 
-        if(predicted == dataset.labels[i]) {
+        if(predicted == test_dataset.labels[i]) {
             correct++;
         }
     }
 
-    return static_cast<float>(correct) / dataset.count;
+    return static_cast<float>(correct) / test_dataset.count;
 }
 
 } // namspace cortex::training

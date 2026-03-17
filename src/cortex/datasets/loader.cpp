@@ -76,9 +76,9 @@ IDXDataset MNISTLoader::load(const std::string& base_path) {
 }
 
 
-IDXDataset EMNISTLoader::load(const std::string& base_path, const std::string& split) {
-    const std::string images = std::format("{}/emnist-{}-train-images-idx3-ubyte", base_path, split);
-    const std::string labels = std::format("{}/emnist-{}-train-labels-idx1-ubyte", base_path, split);
+IDXDataset EMNISTLoader::load(const std::string& base_path, const std::string& domain, const std::string& category) {
+    const std::string images = std::format("{}/emnist-{}-{}-images-idx3-ubyte", base_path, domain, category);
+    const std::string labels = std::format("{}/emnist-{}-{}-labels-idx1-ubyte", base_path, domain, category);
     return IDXLoader::load(images, labels);
 }
 

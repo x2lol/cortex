@@ -25,7 +25,7 @@ private:
 
 class EMNISTLoader {
 public:
-    static IDXDataset load(const std::string& base_path, const std::string& split="letters");
+    static IDXDataset load(const std::string& base_path, const std::string& domain="letters", const std::string& category="train");
 };
 
 class MNISTLoader {
